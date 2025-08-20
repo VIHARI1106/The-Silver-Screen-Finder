@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Movie Search App - TMDb</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <h1>The Silver Screen Finder</h1>
+
+    <div class="search-container">
+      <input 
+        type="text" 
+        id="search-input" 
+        placeholder="Search movies by title..." 
+        aria-label="Movie Search Input"
+      />
+      <select id="genre-select" aria-label="Select Genre">
+        <option value="">All Genres</option>
+        <!-- Genres will be populated dynamically -->
+      </select>
+      <button id="search-button" aria-label="Search Movies">Search</button>
+    </div>
+
+    <div id="movie-results"></div>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
