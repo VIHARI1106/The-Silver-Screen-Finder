@@ -1,4 +1,4 @@
-const TMDB_API_KEY = '9fc333f67be45a47936d39134674e294'; // <-- Replace with your TMDb API key
+const TMDB_API_KEY = '9fc333f67be45a47936d39134674e294';  // <-- Replace with your TMDb API key
 
 const searchInput = document.getElementById('search-input');
 const searchButton = document.getElementById('search-button');
@@ -9,35 +9,44 @@ let currentPage = 1;
 let currentQuery = '';
 let currentGenreId = '';
 let totalResults = 0;
-let genresMap = new Map(); // Maps genre names to IDs
 
-// Fetch genres from TMDb and populate the dropdown
+// Fetch genres from TMDb and populate dropdown
 async function fetchGenres() {
   const url = `https://api.themoviedb.org/3/genre/movie/list?api_key=${TMDB_API_KEY}&language=en-US`;
   const res = await fetch(url);
   const data = await res.json();
 
   if (data.genres) {
+    // Remove previous options except "All"
+    for (let i = genreSelect.options.length - 1; i > 0; i--) {
+      genreSelect.remove(i);
+    }
     data.genres.forEach(genre => {
-      genresMap.set(genre.name, genre.id);
       const option = document.createElement('option');
       option.value = genre.id;
       option.textContent = genre.name;
       genreSelect.appendChild(option);
     });
+  } else {
+    console.error('Could not load genres from TMDb!', data);
   }
 }
 
-// Fetch movies by search query, genre and page
+// Fetch movies using text search or genre filter or both
 async function fetchMovies(query, genreId = '', page = 1) {
-  if (!query) return [];
-
-  let url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${page}`;
-
-  if (genreId) {
-    url += `&with_genres=${genreId}`;
+  let url = '';
+  if (!query && genreId) {
+    // No search text, use discover endpoint for genre
+    url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&page=${page}`;
+  } else if (query) {
+    // Search by text (optionally by genre)
+    url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${page}`;
+    if (genreId) {
+      url += `&with_genres=${genreId}`;
+    }
+  } else {
+    return []; // Show nothing if neither entered
   }
-
   const res = await fetch(url);
   const data = await res.json();
 
@@ -57,7 +66,7 @@ async function fetchMovies(query, genreId = '', page = 1) {
   }
 }
 
-// Fetch detailed movie info from TMDb
+// Fetch detailed movie info for modal
 async function fetchMovieDetails(movieId) {
   const url = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${TMDB_API_KEY}&language=en-US`;
   const res = await fetch(url);
@@ -66,7 +75,6 @@ async function fetchMovieDetails(movieId) {
   if (data) {
     return {
       description: data.overview || 'No description available.',
-      director: 'Unknown', // Requires extra calls to credits API (optional)
       runtime: data.runtime ? `${data.runtime} min` : 'Unknown',
       rating: data.vote_average ? `${data.vote_average}/10` : 'N/A',
       genres: data.genres.map(g => g.name).join(', ')
@@ -74,7 +82,6 @@ async function fetchMovieDetails(movieId) {
   } else {
     return {
       description: 'No detailed info available.',
-      director: 'Unknown',
       runtime: 'Unknown',
       rating: 'N/A',
       genres: ''
@@ -82,6 +89,7 @@ async function fetchMovieDetails(movieId) {
   }
 }
 
+// Show loading spinner
 function createLoadingSpinner() {
   const spinnerContainer = document.createElement('div');
   spinnerContainer.classList.add('loading-spinner');
@@ -91,6 +99,7 @@ function createLoadingSpinner() {
   return spinnerContainer;
 }
 
+// Show modal with details
 async function showMovieModal(movie) {
   const modalBg = document.createElement('div');
   modalBg.classList.add('modal-bg');
@@ -142,6 +151,7 @@ async function showMovieModal(movie) {
   }
 }
 
+// Create a movie card
 function createMovieCard(movie) {
   const card = document.createElement('div');
   card.classList.add('movie-card');
@@ -174,14 +184,16 @@ function createMovieCard(movie) {
   return card;
 }
 
+// Main search function
 async function handleSearch() {
   currentPage = 1;
   currentQuery = searchInput.value.trim();
   currentGenreId = genreSelect.value;
   movieResults.innerHTML = '';
 
-  if (!currentQuery) {
-    movieResults.textContent = 'Please enter a movie title to search.';
+  // Only guard if both fields are empty
+  if (!currentQuery && !currentGenreId) {
+    movieResults.textContent = 'Please enter a movie title or select a genre.';
     return;
   }
 
@@ -213,6 +225,7 @@ async function handleSearch() {
   }
 }
 
+// Load more (pagination)
 function addLoadMoreButton() {
   const existingBtn = document.querySelector('.load-more-btn');
   if (existingBtn) existingBtn.remove();
@@ -248,12 +261,14 @@ function addLoadMoreButton() {
   movieResults.appendChild(loadMoreBtn);
 }
 
-// Initialize genre dropdown then add event listeners
+// Initialize
 fetchGenres();
 
+// Event listeners: search, enter key, and genre change
 searchButton.addEventListener('click', handleSearch);
 searchInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     handleSearch();
   }
 });
+genreSelect.addEventListener('change', handleSearch);
